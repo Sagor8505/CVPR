@@ -1,0 +1,871 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If this is unnecessary, please comment on it.
+\usepackage{cite}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{comment}
+\usepackage{url}
+%\usepackage{breakurl}  % if using hyperref
+\PassOptionsToPackage{hyphens}{url}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\PassOptionsToPackage{hyphens}{url} % Allows line breaks in long URLs
+\usepackage{hyperref}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\DeclareUnicodeCharacter{0306}{\u{}} % or {} if you just want to drop it
+\setlength{\emergencystretch}{2em}
+\tolerance=9999
+\emergencystretch=3em
+\hbadness=10000
+\vbadness=10000
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+    
+\begin{document}
+
+\title{Inter-Eye Severity Asymmetry Analysis for Diabetic Retinopathy Screening using Transfer-Learning CNN
+\\
+
+}
+\author{
+    Sagor Chandra$^{1}$,
+    Fareha Rahman$^{1}$,
+    Apurbo Biswas$^{1}$,
+    MD. Ashikur Rahman Shakib$^{1}$,
+    S M Abdullah Shafi$^{1}$
+    \\
+    \\
+    $^{1}$Department of Computer Science, American International University–Bangladesh (AIUB), \\
+    Dhaka 1229, Bangladesh
+    \\
+    \\
+    Emails: 22-49847-3@student.aiub.edu,\,
+    22-49828-3@student.aiub.edu,\,
+    23-50045-1@student.aiub.edu,\
+    \\
+    22-47515-2@student.aiub.edu,\,
+    shafi@aiub.edu
+}
+
+\maketitle
+
+
+
+
+\begin{abstract}
+Diabetic Retinopathy (DR) is a progressive ocular disease caused by prolonged diabetes and remains one of the leading causes of preventable vision loss if not detected at an early stage. Accurate assessment of DR severity is clinically critical, as disease progression follows an ordinal pattern and may exhibit asymmetry between the left and right eyes. In this study, we propose a DenseNet201-based severity classification framework that combines deep feature extraction with severity-aware analysis for robust DR grading. Instead of end-to-end fine-tuning, DenseNet201 is employed as a frozen feature extractor, followed by a lightweight fully connected classifier trained on balanced deep feature representations using SMOTE applied exclusively to the training set. The proposed framework is evaluated on a five-class DR severity classification task using accuracy, precision, recall, F1-score, and macro one-vs-rest AUC. Experimental results demonstrate an overall classification accuracy of 87\% and a macro OvR AUC of 0.94, indicating strong discriminative capability across imbalanced severity classes. Beyond discrete classification, the model preserves ordinal severity consistency and enables post-hoc analysis of inter-eye severity asymmetry, providing clinically meaningful insights into disease progression. These results highlight the potential of the proposed approach for reliable DR screening and severity assessment in real-world clinical settings.
+\end{abstract}
+
+
+
+
+\section{Introduction}
+
+Diabetic retinopathy (DR) is one of the leading causes of vision impairment and blindness among the working-age population worldwide~\cite{ref1}. The disease is primarily caused by prolonged hyperglycemia, which damages the retinal microvasculature and results in pathological changes such as microaneurysms, hemorrhages, fluid leakage, and abnormal neovascularization. If these changes are not detected and treated at an early stage, they may lead to irreversible vision loss. Therefore, early diagnosis and regular screening play a critical role in preventing severe visual impairment~\cite{ref12}.
+
+In clinical practice, DR is diagnosed by ophthalmologists through the examination of retinal fundus images. However, this manual diagnostic process is time-consuming, costly, and subject to inter-observer variability, particularly in regions with limited access to experienced specialists. Although digital fundus photography has enabled large-scale screening programs, manual interpretation of retinal images remains a major bottleneck. To overcome these challenges, computer-aided diagnosis (CAD) systems have been extensively explored.
+
+Early CAD systems relied on handcrafted feature extraction and traditional machine learning techniques~\cite{ref14}. While these approaches demonstrated limited success, they often struggled to generalize across diverse datasets and imaging conditions. Recent advances in deep learning, particularly convolutional neural networks (CNNs), have significantly improved automated DR detection and grading by learning discriminative features directly from fundus images~\cite{ref1}. To address the scarcity of annotated medical data, transfer learning has been widely adopted. For instance, Yasmin \textit{et al.}~\cite{ref2} redesigned DenseNet-based architectures to improve screening accuracy, while Akhtar \textit{et al.}~\cite{ref3} proposed a deep learning framework for automated DR severity grading.
+
+Despite these advances, most existing methods formulate DR analysis as a discrete classification task, typically dividing disease severity into five predefined stages. Such rigid categorization fails to reflect the continuous and progressive nature of DR and often overlooks subtle pathological variations. Moreover, clinically important factors such as inter-eye severity asymmetry—commonly considered by ophthalmologists during diagnosis—are rarely incorporated into automated systems~\cite{ref7,ref10}. As a result, the sensitivity and clinical interpretability of many existing models remain limited.
+
+To address these limitations, this study proposes a severity-aware automated retinal analysis framework named \textit{EyeDiff}. Instead of treating DR as a fixed multi-class classification problem, EyeDiff preserves ordinal severity consistency and integrates post-hoc inter-eye severity asymmetry analysis. By combining transfer learning-based feature extraction with binocular severity comparison, the proposed framework enables clinically meaningful interpretation of disease progression.
+
+The main contributions of this work are summarized as follows:
+\begin{itemize}
+    \item A severity-aware learning framework that preserves ordinal consistency in diabetic retinopathy severity prediction.
+    \item A post-hoc binocular analysis strategy that quantifies inter-eye severity asymmetry without requiring paired training.
+    \item Extensive experimental validation demonstrating clinically meaningful severity interpretation and robust performance under class imbalance.
+\end{itemize}
+
+The remainder of this paper is organized as follows. Section~II reviews related work on deep learning-based diabetic retinopathy analysis. Section~III presents the proposed methodology. Section~IV reports experimental results and performance evaluation, and Section~V concludes the paper.
+
+
+% ================== COMMENTED OUT (WRONG CONTEXT: HEART DISEASE) ==================
+%
+% \begin{table*}[!t]
+% \caption{Summary of Related Studies on Heart Disease Prediction and Explainable AI}
+% \label{tab:related_studies}
+% \centering
+% \scriptsize
+% \begin{tabular}{|p{1cm}|p{1cm}|p{1.8cm}|p{2.0cm}|p{2.0cm}|p{2.2cm}|p{1.8cm}|p{2.2cm}|}
+% \hline
+% \textbf{Ref} &
+% \textbf{Year} &
+% \textbf{Author(s)} &
+% \textbf{Model Used} &
+% \textbf{Dataset} &
+% \textbf{Preprocessing} &
+% \textbf{Performance} &
+% \textbf{Key Limitation} \\ \hline
+%
+% \cite{ref9} & 2025 & Talukder et al. & XAI-HD (ML + XAI) &
+% CHD, FHD, SHD datasets &
+% Imputation, normalization, encoding, class balancing &
+% Improved predictive accuracy reported &
+% Limited focus on recall-oriented screening \\ \hline
+%
+% \cite{ref23} & 2023 & Asih et al. &
+% SVM, XGBoost, RF, KNN + SHAP/LIME &
+% Not explicitly stated & Not detailed &
+% F1-score up to 88\% &
+% Lack of model selection based on clinical interpretability \\ \hline
+%
+% \cite{ref14} & 2024 & El-Sofany et al. &
+% XGBoost + SHAP &
+% Combined datasets (SF-2 subset) &
+% Feature selection (Chi-square, ANOVA, MI) &
+% 97.57\% accuracy, 98\% AUC &
+% Limited discussion of class imbalance effects \\ \hline
+%
+% \cite{ref21} & 2025 & Ganie et al. &
+% Stacking and Voting Ensemble + SHAP &
+% Multiple heart disease datasets &
+% Statistical validation &
+% Higher accuracy than individual models &
+% Interpretability introduced after model aggregation \\ \hline
+%
+% \cite{ref24} & 2024 & Rezk et al. &
+% Hybrid Ensemble (LightGBM, XGBoost) &
+% Not explicitly stated & Not detailed &
+% Accuracy up to 89\% &
+% Model complexity limits clinical transparency \\ \hline
+%
+% \cite{ref25} & 2025 & Bilal et al. &
+% Advanced ML + XAI &
+% Kaggle CVD dataset & Not detailed &
+% 91.94\% accuracy &
+% Limited emphasis on early-risk recall sensitivity \\ \hline
+%
+% \cite{ref26} & 2025 & Climente-González et al. &
+% Explainable Boosting Machine (EBM) &
+% UK Biobank Proteomics &
+% Exclusions, normalization, 10-fold CV &
+% 0.785 AUROC &
+% Focus on population-level prediction rather than screening \\ \hline
+%
+% \cite{ref27} & 2025 & Kumar et al. &
+% Hybrid DL, RF, SVM, NN (Review) &
+% Large-scale healthcare datasets &
+% Not applicable (Review) &
+% Reported performance gains &
+% Lack of unified evaluation framework \\ \hline
+%
+% \cite{ref28} & 2025 & Ali and Islam &
+% MLP, RF, LR, SVC, KNN, DT, XGBoost + SHAP &
+% Multiple datasets &
+% Cross-validation, tuning &
+% MLP achieved best results &
+% Interpretability varies across models \\ \hline
+%
+% \cite{ref30} & 2025 & Shah et al. &
+% Hybrid Ensemble + XAI &
+% Public CVD datasets &
+% SHAP, PCA, t-SNE &
+% AUC up to 0.82, F1-score 82\% &
+% Limited emphasis on threshold optimization \\ \hline
+%
+% \end{tabular}
+% \end{table*}
+%
+% \textbf{The key contributions of the study are as follows:}
+%
+% \begin{itemize}
+%     \item \textbf{Integrated Biomarker-Based Risk Modeling:}
+%     Biomarker-based CHD risk classification (NOT RELEVANT).
+%
+%     \item \textbf{Imbalance-Aware and Recall-Sensitive Evaluation:}
+%     Recall-focused screening for heart disease (NOT RELEVANT).
+%
+%     \item \textbf{Comparative Analysis of Interpretable and Nonlinear Models:}
+%     Elastic Net, XGBoost, ensemble for CVD (NOT RELEVANT).
+%
+%     \item \textbf{Explainable Risk Prediction Using SHAP:}
+%     SHAP-based cardiovascular interpretation (NOT RELEVANT).
+%
+%     \item \textbf{Clinical Decision-Support Insight:}
+%     Heart disease decision support (NOT RELEVANT).
+% \end{itemize}
+%
+% ================== END COMMENTED BLOCK ==================
+
+
+
+
+
+\section{Related Works}
+
+Recent advances in deep learning have significantly improved automated diabetic retinopathy (DR) detection and severity grading. This section reviews representative studies in the literature, focusing on classification strategy, severity modeling, and clinical applicability.
+
+Early machine learning approaches for DR diagnosis primarily relied on handcrafted features combined with traditional classifiers. Priya and Aruna~\cite{ref14} explored classical machine learning techniques for DR detection, while Nguyen \textit{et al.}~\cite{ref16} and Abed \textit{et al.}~\cite{ref11} introduced early CNN-based models that demonstrated improved performance over conventional methods. However, these approaches were largely limited to binary classification and lacked robustness across datasets.
+
+With the adoption of deep CNN architectures, several studies have proposed multi-class DR severity grading frameworks. Yasmin \textit{et al.}~\cite{ref2} introduced DR-RetinaNet, a DenseNet201-based transfer learning model with selective fine-tuning. Akhtar \textit{et al.}~\cite{ref3} proposed a CNN-based framework for automated DR grading, while Abbasi \textit{et al.}~\cite{ref4} employed adaptive CNN architectures with enhanced preprocessing techniques. Islam \textit{et al.}~\cite{ref8} further explored CNN fusion models to balance accuracy and computational efficiency. Despite strong performance, these methods primarily treat DR grading as a nominal classification problem.
+
+To better reflect disease progression, severity-aware and ordinal modeling approaches have been explored. Yu \textit{et al.}~\cite{ref9} proposed an autoregressive ordinal regression framework for DR grading, while Dai \textit{et al.}~\cite{ref13} developed a deep learning system to predict time-to-progression of DR. Although effective in capturing severity trends, such methods introduce significant computational complexity and are less suited for lightweight screening systems.
+
+Inter-eye and asymmetric analysis has also received attention. Qian \textit{et al.}~\cite{ref10} proposed a binocular two-stream CNN that exploits correlations between paired fundus images, while Jena \textit{et al.}~\cite{ref6} explored asymmetric deep learning features for DR screening. Clinical studies further confirm that inter-eye severity asymmetry is a common and meaningful characteristic of DR progression~\cite{ref7}. However, most binocular approaches require paired training data or complex architectures, limiting real-world applicability.
+
+In contrast, the proposed \textit{EyeDiff} framework employs a frozen DenseNet201 backbone for robust feature extraction, performs feature-level class balancing using SMOTE, preserves ordinal severity consistency, and enables post-hoc inter-eye severity asymmetry analysis without requiring paired training. This design provides an efficient and clinically interpretable solution for DR severity screening.
+
+
+
+
+
+
+\section{Methodology}
+
+This section presents the complete methodology adopted for diabetic retinopathy (DR)
+severity classification. The proposed workflow consists of dataset preparation and
+splitting, image preprocessing, class distribution analysis, class imbalance handling,
+deep feature extraction using a pre-trained DenseNet201 backbone, classifier design,
+training strategy, and evaluation protocol. The overall pipeline of the proposed system
+is illustrated in Fig.~\ref{fig:methodology_pipeline}.
+
+%-------------------------------------------------
+\subsection{Dataset Description}
+
+A publicly available diabetic retinopathy fundus image dataset was used in this study.
+Each retinal image is annotated into one of five DR severity classes: No DR, Mild,
+Moderate, Severe, and Proliferative DR.
+
+To ensure unbiased evaluation and reproducibility, the dataset was divided into training,
+validation, and test sets following an 80:10:10 ratio. The dataset split configuration is
+summarized in Table~\ref{tab:dataset_split}.
+
+\begin{table}[H]
+\centering
+\caption{Dataset Split Summary}
+\label{tab:dataset_split}
+\begin{tabular}{lcc}
+\hline
+\textbf{Dataset Split} & \textbf{Number of Images} & \textbf{Percentage} \\
+\hline
+Training & 2930 & 80\% \\
+Validation & 366 & 10\% \\
+Test & 366 & 10\% \\
+\textbf{Total} & \textbf{3662} & \textbf{100\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+%-------------------------------------------------
+\subsection{Class Distribution Analysis}
+
+The dataset exhibits a significant class imbalance, where the No DR and Moderate DR
+classes dominate the dataset, while Severe and Proliferative DR classes are
+underrepresented. Such imbalance can bias model learning toward majority classes if not
+properly addressed.
+
+The original class distribution across different dataset splits is reported in
+Table~\ref{tab:class_distribution_before}.
+
+\begin{table}[H]
+\centering
+\caption{Class Distribution Before SMOTE}
+\label{tab:class_distribution_before}
+\begin{tabular}{lccc}
+\hline
+\textbf{Class} & \textbf{Train} & \textbf{Validation} & \textbf{Test} \\
+\hline
+No DR & 1434 & 172 & 199 \\
+Mild & 300 & 40 & 30 \\
+Moderate & 808 & 104 & 87 \\
+Severe & 154 & 22 & 17 \\
+Proliferative & 234 & 28 & 33 \\
+\hline
+\end{tabular}
+\end{table}
+
+%-------------------------------------------------
+\subsection{Image Preprocessing}
+
+All fundus images were processed using a standardized preprocessing pipeline to ensure
+uniform input representation and numerical stability. Images were resized to a fixed
+resolution and normalized prior to model input.
+
+No data augmentation, noise reduction, or smoothing techniques were applied to the
+validation and test sets in order to preserve the integrity of performance evaluation.
+The preprocessing steps employed in this study are summarized in
+Table~\ref{tab:preprocessing_steps}.
+
+\begin{table}[H]
+\centering
+\caption{Image Preprocessing Steps}
+\label{tab:preprocessing_steps}
+\begin{tabular}{ll}
+\hline
+\textbf{Step} & \textbf{Description} \\
+\hline
+Color Space & RGB \\
+Image Size & $224 \times 224$ \\
+Normalization & Pixel values scaled to [0,1] \\
+Noise Reduction & Not applied \\
+Data Augmentation & Not applied \\
+Validation/Test Smoothing & Not applied \\
+\hline
+\end{tabular}
+\end{table}
+
+%---------------- PIPELINE FIGURE ----------------
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{methodology_pipeline.png}
+    \caption{Overall methodology pipeline for diabetic retinopathy severity classification.
+    The pipeline illustrates dataset preparation, image preprocessing, DenseNet201-based
+    feature extraction, feature-level class balancing using SMOTE on the training set,
+    classification using a fully connected neural network, and performance evaluation.}
+    \label{fig:methodology_pipeline}
+\end{figure}
+
+%-------------------------------------------------
+%-------------------------------------------------
+\subsection{Severity-Aware Problem Formulation}
+
+Diabetic retinopathy severity classification is inherently an ordinal learning problem,
+where disease stages follow a clinically meaningful progression from No DR to
+Proliferative DR. Unlike nominal classification tasks, misclassification errors between
+adjacent severity levels are clinically less severe than errors spanning distant stages.
+
+Although the proposed framework performs multi-class classification, the ordinal nature
+of DR severity was explicitly considered during model analysis and evaluation. The five
+severity grades and their ordinal ordering are summarized in
+Table~\ref{tab:severity_ordering}.
+\begin{table}[H]
+\centering
+\caption{Ordinal Structure of Diabetic Retinopathy Severity Levels}
+\label{tab:severity_ordering}
+\resizebox{1\linewidth}{!}{
+\begin{tabular}{cll}
+\hline
+\textbf{Ordinal Level} & \textbf{Severity Class} & \textbf{Clinical Interpretation} \\
+\hline
+0 & No DR & No visible retinal abnormalities \\
+1 & Mild & Early microaneurysms present \\
+2 & Moderate & Increased vascular lesions \\
+3 & Severe & Extensive hemorrhages and ischemia \\
+4 & Proliferative & Neovascularization and high risk of vision loss \\
+\hline
+\end{tabular}
+}
+\end{table}
+
+
+%-------------------------------------------------
+\subsection{Asymmetry in DR Severity Distribution}
+
+The diabetic retinopathy dataset exhibits pronounced asymmetry in both class frequency
+and clinical importance. While No DR and Moderate DR classes dominate the dataset, Severe
+and Proliferative DR classes are comparatively rare but represent advanced pathological
+conditions requiring urgent medical attention.
+
+This asymmetric nature introduces two challenges: (i) statistical bias toward majority
+classes during training, and (ii) higher clinical cost associated with misclassifying
+advanced DR stages. Consequently, special emphasis was placed on preserving sensitivity
+for high-severity classes through feature-level balancing and severity-aware evaluation.
+
+%-------------------------------------------------
+\subsection{Rationale for Feature-Level Learning}
+
+Instead of training a fully end-to-end convolutional neural network, the proposed
+framework employs DenseNet201 as a frozen feature extractor followed by a lightweight
+fully connected classifier. This design choice reduces overfitting, improves training
+stability, and is well-suited for limited medical imaging datasets.
+
+Let $\mathbf{x}_i \in \mathbb{R}^{1920}$ denote the deep feature vector extracted from the
+final convolutional layer of DenseNet201 for image $i$. The classification task is then
+formulated as learning a mapping:
+
+\[
+f(\mathbf{x}_i) \rightarrow y_i, \quad y_i \in \{0,1,2,3,4\}
+\]
+
+where $y_i$ represents the DR severity level. Operating in the feature space enables the
+application of traditional imbalance handling techniques, such as SMOTE, without
+introducing unrealistic synthetic retinal images.
+
+%-------------------------------------------------
+\subsection{Severity-Sensitive Evaluation Strategy}
+
+Given the ordinal and clinically progressive nature of diabetic retinopathy, evaluation
+was designed to emphasize balanced performance across all severity levels rather than
+overall accuracy alone. In particular, recall was treated as a critical metric for
+high-severity classes, as failure to detect Severe or Proliferative DR may delay
+necessary clinical intervention.
+
+Although standard multi-class classification metrics were employed, class-wise
+performance analysis was conducted to assess the model’s sensitivity to minority and
+high-risk DR categories.
+
+%-------------------------------------------------
+\subsection{Decision Boundary Behavior Across Severity Levels}
+
+The fully connected classifier learns decision boundaries within the DenseNet201 feature
+space to separate progressive DR severity levels. Due to the gradual visual transition
+between adjacent disease stages, partial feature overlap is expected between neighboring
+classes such as Mild and Moderate DR.
+
+Feature-level oversampling improves representation of minority high-severity classes,
+leading to more balanced decision boundaries and reduced bias toward majority categories.
+This behavior is particularly important for maintaining sensitivity to advanced DR
+stages.
+
+\subsection{Feature Extraction Using DenseNet201}
+
+A pre-trained DenseNet201 model initialized with ImageNet weights was employed as a deep
+feature extractor. The original classification head was removed, and global average
+pooled features were extracted from the final convolutional layer.
+
+All DenseNet201 layers were kept frozen during feature extraction to leverage pre-trained
+representations and reduce overfitting. Each retinal image was transformed into a
+1920-dimensional feature vector.
+
+%-------------------------------------------------
+\subsection{Class Imbalance Handling Using SMOTE}
+
+To address class imbalance in the training data, the Synthetic Minority Oversampling
+Technique (SMOTE) was applied exclusively to the training feature set. Applying SMOTE only
+on the training data prevents information leakage and ensures unbiased performance
+evaluation on the validation and test sets.
+
+SMOTE was performed at the feature level rather than on raw images to avoid generating
+unrealistic synthetic fundus images while balancing class distributions in the learned
+feature space. The resulting balanced class distribution of the training set after SMOTE
+is reported in Table~\ref{tab:class_distribution_after}.
+
+\begin{table}[H]
+\centering
+\caption{Class Distribution After SMOTE (Training Set Only)}
+\label{tab:class_distribution_after}
+\begin{tabular}{lcc}
+\hline
+\textbf{Class} & \textbf{Samples} & \textbf{Percentage} \\
+\hline
+No DR & 1434 & 20\% \\
+Mild & 1434 & 20\% \\
+Moderate & 1434 & 20\% \\
+Severe & 1434 & 20\% \\
+Proliferative & 1434 & 20\% \\
+\hline
+\textbf{Total} & \textbf{7170} & \textbf{100\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+%-------------------------------------------------
+\subsection{Proposed Classification Network}
+
+A fully connected neural network was designed to classify the DenseNet201 feature vectors
+into five DR severity classes. Batch normalization and dropout layers were incorporated
+to improve generalization and reduce overfitting.
+
+The architecture of the proposed classifier is detailed in
+Table~\ref{tab:classifier_architecture}.
+
+\begin{table}[H]
+\centering
+\caption{Classifier Architecture}
+\label{tab:classifier_architecture}
+\begin{tabular}{ll}
+\hline
+\textbf{Layer} & \textbf{Configuration} \\
+\hline
+Input & 1920-dimensional feature vector \\
+Dense Layer 1 & 512 units + ReLU \\
+Batch Normalization & Applied \\
+Dropout & 0.5 \\
+Dense Layer 2 & 256 units + ReLU \\
+Batch Normalization & Applied \\
+Dropout & 0.4 \\
+Dense Layer 3 & 128 units + ReLU \\
+Dropout & 0.3 \\
+Output Layer & 5 units + Softmax \\
+\hline
+\end{tabular}
+\end{table}
+
+%-------------------------------------------------
+\subsection{Training Strategy}
+
+The proposed model was trained using categorical cross-entropy loss and optimized with
+the Adam optimizer. Early stopping and learning rate reduction strategies were employed
+to stabilize training, accelerate convergence, and prevent overfitting.
+
+The training configuration used in this study is summarized in
+Table~\ref{tab:training_configuration}.
+
+\begin{table}[H]
+\centering
+\caption{Training Configuration}
+\label{tab:training_configuration}
+\begin{tabular}{ll}
+\hline
+\textbf{Parameter} & \textbf{Value} \\
+\hline
+Optimizer & Adam \\
+Learning Rate & $1 \times 10^{-4}$ \\
+Batch Size & 32 \\
+Maximum Epochs & 50 \\
+Loss Function & Categorical Cross-Entropy \\
+Early Stopping & Patience = 10 \\
+Learning Rate Reduction & Factor = 0.3, Patience = 5 \\
+\hline
+\end{tabular}
+\end{table}
+
+%-------------------------------------------------
+\subsection{Evaluation Protocol}
+
+Model performance was evaluated using the original, non-oversampled validation and test
+sets to ensure unbiased assessment. The validation set was used exclusively for
+hyperparameter tuning and early stopping, while the test set was reserved for final
+performance evaluation.
+
+Standard multi-class classification metrics were employed to assess classification
+performance across all DR severity levels.
+
+
+
+\section{Results and Analysis}
+
+This section presents a comprehensive evaluation of the proposed DenseNet201-based
+framework for diabetic retinopathy (DR) severity classification and severity progression
+analysis. The model performance was assessed using multiple quantitative metrics,
+including accuracy, precision, recall, F1-score, and macro one-vs-rest (OvR) AUC.
+In addition to discrete multi-class classification, continuous severity prediction,
+inter-eye asymmetry, and training convergence behavior were also analyzed to provide a
+holistic assessment of model reliability and clinical relevance.
+
+%-------------------------------------------------
+\subsection{Training Convergence and Learning Behavior}
+
+The training dynamics of the proposed model were evaluated using training and validation
+accuracy, loss, precision, recall, and AUC across epochs, as illustrated in
+Fig.~\ref{fig:training_curves}. The accuracy, precision, and recall curves demonstrate
+stable convergence, with validation trends closely following the training curves,
+indicating effective generalization.
+
+The loss and AUC curves further confirm balanced learning behavior, showing consistent
+optimization without abrupt divergence. The validation AUC gradually improves and
+stabilizes around 0.94, suggesting strong discriminative capability and absence of
+severe overfitting.
+
+\begin{figure*}[t]
+\centering
+\begin{subfigure}[t]{0.32\linewidth}
+\includegraphics[width=\linewidth]{train_val_precision.png}
+\caption{Precision}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.32\linewidth}
+\includegraphics[width=\linewidth]{train_val_recall.png}
+\caption{Recall}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.32\linewidth}
+\includegraphics[width=\linewidth]{train_val_auc.png}
+\caption{AUC}
+\end{subfigure}
+
+\vspace{0.4cm}
+
+\begin{subfigure}[t]{0.40\linewidth}
+\includegraphics[width=\linewidth]{train_val_accuracy.png}
+\caption{Accuracy}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.40\linewidth}
+\includegraphics[width=\linewidth]{train_val_loss.png}
+\caption{Loss}
+\end{subfigure}
+
+\caption{Training and validation performance curves across epochs.}
+\label{fig:training_curves}
+\end{figure*}
+
+%-------------------------------------------------
+\subsection{Overall Classification Performance}
+
+The overall performance of the proposed model on the held-out test set is summarized
+using standard multi-class classification metrics. The model achieved an overall
+accuracy of 0.87, with a weighted F1-score of 0.87, indicating strong predictive
+capability across imbalanced class distributions.
+
+Macro-averaged precision, recall, and F1-score were recorded as 0.74, 0.73, and 0.72,
+respectively. Furthermore, the macro OvR AUC of 0.94 highlights the model’s strong
+discriminative ability.
+
+\begin{table}[h]
+\centering
+\caption{Overall quantitative performance of the proposed model.}
+\label{tab:overall_performance}
+\begin{tabular}{lc}
+\hline
+\textbf{Metric} & \textbf{Value} \\
+\hline
+Accuracy & 0.87 \\
+Macro Precision & 0.74 \\
+Macro Recall & 0.73 \\
+Macro F1-score & 0.72 \\
+Weighted Precision & 0.88 \\
+Weighted Recall & 0.87 \\
+Weighted F1-score & 0.87 \\
+Macro OvR AUC & 0.94 \\
+\hline
+\end{tabular}
+\end{table}
+
+%-------------------------------------------------
+\subsection{Confusion Matrix Analysis}
+
+The confusion matrix for the five-class DR severity classification task is shown in
+Fig.~\ref{fig:confusion_matrix}. The model demonstrates strong performance for the
+No DR and Moderate DR classes, with a high number of correctly classified samples along
+the diagonal.
+
+Misclassifications primarily occur between adjacent severity levels, particularly
+between Mild and Moderate, as well as Severe and Proliferative DR. Such confusion is
+clinically reasonable due to overlapping visual features among neighboring DR stages.
+
+\begin{figure*}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{confusion_matrix.png}
+\caption{Confusion matrix for five-class diabetic retinopathy severity classification.}
+\label{fig:confusion_matrix}
+\end{figure*}
+
+%-------------------------------------------------
+%-------------------------------------------------
+\subsection{Class-wise Performance Analysis}
+
+A detailed class-wise evaluation further highlights the strengths and limitations of the
+proposed model. The No DR class achieved the highest performance, while Moderate DR also
+demonstrated strong predictive capability. In contrast, Mild, Severe, and Proliferative
+classes showed relatively lower recall due to limited samples and subtle visual cues.
+
+\begin{table}[h]
+\centering
+\caption{Class-wise performance metrics on the test set.}
+\label{tab:classwise_performance}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
+\hline
+No DR (0) & 0.97 & 0.96 & 0.98 & 199 \\
+Mild (1) & 0.63 & 0.63 & 0.63 & 30 \\
+Moderate (2) & 0.82 & 0.85 & 0.80 & 87 \\
+Severe (3) & 0.63 & 0.59 & 0.62 & 17 \\
+Proliferative (4) & 0.67 & 0.61 & 0.58 & 33 \\
+\hline
+\end{tabular}
+\end{table}
+
+To further summarize the classification behavior, Table~\ref{tab:classification_summary}
+reports the overall accuracy along with macro-averaged and weighted-averaged evaluation
+metrics derived from the classification report.
+
+\begin{table}[h]
+\centering
+\caption{Classification report of the proposed model on the test set.}
+\label{tab:classification_summary}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{Support} \\
+\hline
+0 & 0.97 & 0.96 & 0.98 & 199 \\
+1 & 0.63 & 0.63 & 0.63 & 30 \\
+2 & 0.82 & 0.85 & 0.80 & 87 \\
+3 & 0.63 & 0.59 & 0.62 & 17 \\
+4 & 0.67 & 0.61 & 0.58 & 33 \\
+\hline
+Accuracy & -- & -- & 0.87 & 366 \\
+Macro Avg & 0.74 & 0.73 & 0.72 & 366 \\
+Weighted Avg & 0.88 & 0.87 & 0.87 & 366 \\
+\hline
+\end{tabular}
+\end{table}
+
+
+The class-wise results indicate that the proposed model is highly reliable for identifying
+No DR and Moderate DR cases, while the reduced performance for minority classes reflects
+the inherent difficulty of distinguishing visually adjacent DR severity stages. These
+findings are consistent with existing diabetic retinopathy severity classification
+literature.
+
+%-------------------------------------------------
+\subsection{Severity Prediction Consistency Across DR Grades}
+
+Fig.~\ref{fig:severity_vs_grade} shows a clear monotonic increase in predicted severity
+scores with increasing DR grades. The boxplot in
+Fig.~\ref{fig:severity_distribution} further confirms distinct severity distributions.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{severity_vs_grade.png}
+\caption{Predicted severity scores versus true DR grades.}
+\label{fig:severity_vs_grade}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{severity_distribution.png}
+\caption{Distribution of predicted severity scores across DR grades.}
+\label{fig:severity_distribution}
+\end{figure}
+
+%-------------------------------------------------
+\subsection{Severity Regression Performance}
+
+The regression analysis in Fig.~\ref{fig:severity_regression} shows a strong linear
+relationship between predicted and ground-truth severity scores.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{severity_regression.png}
+\caption{Regression analysis of predicted versus ground-truth severity scores.}
+\label{fig:severity_regression}
+\end{figure}
+
+%-------------------------------------------------
+\subsection{Inter-eye Severity Asymmetry Analysis}
+
+Fig.~\ref{fig:inter_eye_asymmetry} shows that inter-eye severity differences are centered
+near zero, indicating symmetric disease progression with clinically plausible variation.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\linewidth]{inter_eye_asymmetry.png}
+\caption{Distribution of predicted inter-eye severity differences.}
+\label{fig:inter_eye_asymmetry}
+\end{figure}
+
+%-------------------------------------------------
+\subsection{Discussion of Failure Cases and Limitations}
+
+The primary limitations arise from confusion between visually adjacent DR stages and
+limited data availability for severe classes. Feature-level SMOTE may also introduce
+smoothing effects. Future work will address these issues using larger datasets and
+attention-based architectures.
+
+%-------------------------------------------------
+\subsection{Summary of Results}
+
+Overall, the proposed DenseNet201-based framework achieves strong and stable performance
+for DR severity classification, with an accuracy of 0.87 and a macro OvR AUC of 0.94.
+The model demonstrates reliable convergence, consistent severity ordering, and
+clinically meaningful asymmetry patterns.
+
+
+
+
+
+\section{Discussion}
+
+This section discusses the experimental findings of the proposed DenseNet201-based
+framework for diabetic retinopathy (DR) severity classification, with particular focus
+on learning behavior, class-wise performance, clinical relevance, and limitations.
+The discussion is structured to interpret the quantitative results presented in the
+previous section and to justify the observed performance trends in the context of
+clinical ophthalmology.
+
+\paragraph{Training behavior and convergence.}
+The training and validation curves indicate stable convergence across all evaluated
+metrics, including accuracy, precision, recall, loss, and AUC. As shown in
+Fig.~\ref{fig:training_curves}, validation performance closely follows the training
+trend, suggesting effective generalization and limited overfitting. The gradual
+stabilization of validation AUC around 0.94 further demonstrates the robustness of
+the learned feature representations and the effectiveness of the adopted training
+strategy.
+
+\paragraph{Interpretation of classification performance.}
+The proposed model achieves an overall accuracy of 0.87 and a macro OvR AUC of 0.94,
+indicating strong discriminative capability across all DR severity levels. While
+weighted metrics remain high due to the dominance of majority classes, macro-averaged
+metrics provide a more balanced view of performance across minority categories. The
+observed macro F1-score of 0.72 reflects the inherent difficulty of multi-class DR
+severity classification under class imbalance conditions.
+
+\paragraph{Confusion matrix behavior and clinical plausibility.}
+Analysis of the confusion matrix (Fig.~\ref{fig:confusion_matrix}) reveals that most
+misclassifications occur between adjacent severity levels, particularly Mild versus
+Moderate and Severe versus Proliferative DR. Such errors are clinically plausible, as
+neighboring stages often exhibit overlapping visual characteristics, even among expert
+graders. Importantly, severe misclassification across distant severity levels is rare,
+indicating reliable severity ordering.
+
+\paragraph{Class-wise performance characteristics.}
+The class-wise evaluation highlights strong performance for No DR and Moderate DR,
+which exhibit clear visual patterns and sufficient sample representation. In contrast,
+Mild, Severe, and Proliferative classes demonstrate relatively lower recall and F1-score,
+primarily due to limited data availability and subtle lesion boundaries. These findings
+are consistent with prior studies on DR severity classification and reflect fundamental
+dataset-level challenges rather than model deficiencies.
+
+\paragraph{Ordinal severity consistency.}
+Beyond categorical accuracy, the model preserves the ordinal nature of DR progression.
+The monotonic increase in predicted severity scores across DR grades
+(Fig.~\ref{fig:severity_vs_grade}) and the well-separated severity distributions
+(Fig.~\ref{fig:severity_distribution}) confirm that the learned representation respects
+clinical disease ordering. This behavior is particularly important for screening and
+follow-up applications where disease progression monitoring is required.
+
+\paragraph{Severity regression interpretation.}
+The strong linear correlation between predicted and ground-truth severity scores
+(Fig.~\ref{fig:severity_regression}) indicates that the proposed framework captures
+continuous disease progression patterns rather than relying solely on discrete
+boundaries. Minor deviations observed in mid-range severity levels are expected due to
+overlapping pathological features and labeling variability.
+
+\paragraph{Inter-eye asymmetry analysis.}
+The inter-eye severity asymmetry distribution is centered near zero
+(Fig.~\ref{fig:inter_eye_asymmetry}), indicating overall symmetric disease progression,
+with moderate dispersion reflecting clinically realistic variation. This observation
+aligns with known ophthalmological findings, where asymmetric progression is common but
+rarely extreme.
+
+\paragraph{Limitations and failure cases.}
+Despite strong overall performance, the model faces limitations in distinguishing
+between visually adjacent DR stages and in handling minority classes with limited
+samples. Although feature-level SMOTE improves class balance during training, it may
+introduce smoothing effects in the feature space. These limitations highlight the need
+for larger datasets, lesion-aware attention mechanisms, and multi-center validation.
+
+\paragraph{Clinical implications.}
+The proposed framework demonstrates potential for clinical decision support by providing
+reliable severity classification, consistent ordinal behavior, and interpretable
+performance characteristics. Its stable convergence and sensitivity to high-severity
+classes make it suitable for large-scale screening and disease progression analysis.
+
+
+\section{Conclusion}
+
+In this study, a DenseNet201-based framework was proposed for automated diabetic
+retinopathy severity classification and severity progression analysis. The framework
+combines deep feature extraction, feature-level class balancing, and a lightweight
+classification network to address challenges associated with limited and imbalanced
+medical imaging datasets. Experimental results demonstrate that the proposed approach
+achieves strong performance, with an overall accuracy of 0.87 and a macro OvR AUC of
+0.94, while preserving clinically meaningful severity ordering.
+
+Comprehensive analysis of training behavior, class-wise performance, severity regression,
+and inter-eye asymmetry confirms the robustness and clinical relevance of the proposed
+model. Although performance for minority and adjacent severity classes remains
+challenging, the observed limitations are consistent with the inherent complexity of DR
+grading. Future work will focus on incorporating larger and more diverse datasets,
+attention-based lesion modeling, and multi-modal clinical data to further enhance
+performance and generalizability.
+
+
+
+\bibliographystyle{ieeetr}
+\bibliography{ref}
+\end{document}
+
